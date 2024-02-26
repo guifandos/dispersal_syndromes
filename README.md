@@ -9,8 +9,7 @@ Guillermo Fandos<sup>1,2</sup>,Rob Robinson <sup>3</sup>, Damaris Zurell <sup>1<
 3.  British Trust for Ornithology, The Nunnery, Thetford, IP24 2PU, United Kingdom
 
 
-Code (preliminar): [![DOI](https://zenodo.org/badge/416393431.svg)](https://zenodo.org/badge/latestdoi/416393431)
-
+Code (preliminar): [![DOI](https://zenodo.org/badge/10713958.svg)](https://zenodo.org/badge/latestdoi/10713958)
 
 
 ### ABSTRACT:
