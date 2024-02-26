@@ -8,9 +8,7 @@ Guillermo Fandos<sup>1,2</sup>,Rob Robinson <sup>3</sup>, Damaris Zurell <sup>1<
 2. Department of Biodiversity ecology and evolution, Faculty of Biology, Complutense University, 28040 Madrid, Spain
 3.  British Trust for Ornithology, The Nunnery, Thetford, IP24 2PU, United Kingdom
 
-
-
-Code (preliminar): [![DOI](https://zenodo.org/badge/10713958.svg)](https://zenodo.org/badge/latestdoi/10713958)
+Code (preliminar): [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.10713958.svg)](https://zenodo.org/records/10713958)
 
 ### ABSTRACT:
 
