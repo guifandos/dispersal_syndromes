@@ -49,7 +49,6 @@ myspread <- function(df, key, value) {
 # DATA ====================================================================
 
 ## Loading ----------------------------------------------------------------
-## Loading ----------------------------------------------------------------
 # Load tree data
 rf.tree <- read.nexus("data/data_philo/dispersal_tree500.nex")
 
@@ -66,35 +65,36 @@ distance_total_functions <- read_csv("data/dispersal_distance/Table_S13_ species
 # Select total dispersal, excluding breeding and natal
 
 dispersal_traits <- dispersal_traits_total %>% 
-  filter(type== "average") %>% 
+  filter(type== "natal") %>% 
   dplyr::rename(label= species) %>% 
   distinct(label, .keep_all = TRUE) 
 
 distance_total_functions_join <- distance_total_functions %>%
-  filter(type== "average") %>% 
+  filter(type== "natal") %>% 
   dplyr::select(species, median,upper_distance, function_id) %>% 
   myspread(function_id, c(median,upper_distance)) %>% 
   dplyr::rename(label= species)
 dispersal_traits$label <- gsub(" ", "_", dispersal_traits$label)
 distance_total_functions_join$label <- gsub(" ", "_", distance_total_functions_join$label)
 
-distance_total_functions_join <- distance_total_functions_join %>% 
-  mutate(Exponential_median= log(Exponential_median +1),
-         Exponential_upper_distance= log(Exponential_upper_distance +1),
-         Gamma_median= log(Gamma_median +1),
-         Gamma_upper_distance= log(Gamma_upper_distance +1),
-         Hcauchy_median= log(Hcauchy_median +1),
-         Hcauchy_upper_distance= log(Hcauchy_upper_distance +1),
-         Weibull_median= log(Weibull_median +1),
-         Weibull_upper_distance= log(Weibull_upper_distance +1),)
+distance_total_functions_join2 <- distance_total_functions_join %>% 
+  mutate(Exponential_median_log= log(Exponential_median +1),
+         Exponential_upper_distance_log= log(Exponential_upper_distance +1),
+         Gamma_median_log= log(Gamma_median +1),
+         Gamma_upper_distance_log= log(Gamma_upper_distance +1),
+         Hcauchy_median_log= log(Hcauchy_median +1),
+         Hcauchy_upper_distance_log= log(Hcauchy_upper_distance +1),
+         Weibull_median_log= log(Weibull_median +1),
+         Weibull_upper_distance_log= log(Weibull_upper_distance +1),)
 
 variables_s <- distance_total_functions_join %>% 
   dplyr::select(Exponential_median, Exponential_upper_distance, Gamma_median, Gamma_upper_distance,Hcauchy_median, Hcauchy_upper_distance,
                 Weibull_median, Weibull_upper_distance) %>% 
-  scale(.) %>% 
+  # scale(.) %>% 
   as.data.frame(.) 
 
-distance_total_functions_join <- cbind(distance_total_functions_join$label, variables_s)
+distance_total_functions_join <- distance_total_functions_join2
+#distance_total_functions_join <- cbind(distance_total_functions_join$label, distance_total_functions_join2)
 colnames(distance_total_functions_join)[colnames(distance_total_functions_join) == 'distance_total_functions_join$label'] <- 'label'
 
 dispersal_traits <-  dispersal_traits %>%
@@ -111,7 +111,7 @@ row.names(dispersal_traits) <- dispersal_traits$label
 
 name_dispersal <- unique(dispersal_traits$label)
 names_tree <- rf.tree$tip.label
-species_name <- intersect(name_dispersal,names_tree)
+species_name <- base::intersect(name_dispersal,names_tree)
 dispersal_traits <- dispersal_traits %>% 
   filter(label %in% species_name)
 dispersal_tree <- keep.tip(rf.tree, species_name)
@@ -120,7 +120,6 @@ name.check(dispersal_tree, dispersal_traits)
 ################################################
 ################################################
 
-################################################
 dispersal_analysis <- dispersal_traits %>% 
   dplyr::rename("habita_for"= "Habitat.niche.position.along.forest.open.area.gradient",
                 "habitat_niche_breadth"="Habitat.niche.breadth",
@@ -140,6 +139,8 @@ dispersal_analysis <- dispersal_traits %>%
   dplyr::select(dispersal_distance, lon_dispersal_distance, body_mass, HWI, distance_mig, PC1, PC2, Latitude, AnnualTemp, TempRange, AnnualPrecip, PrecipRange) 
 
 dispersal_analysis <- dispersal_analysis %>% 
+  mutate(log_body_mass= log(body_mass +1),
+         log_HWI= log(HWI +1)) %>% 
   modify_if(., is.character, as.numeric) %>% 
   scale(.) %>% 
   as.data.frame(.) 
@@ -157,29 +158,33 @@ dispersal_analysis <- cbind(dispersal_analysis, dispersal_traits[, c("Territoria
 # Run bayesian analysis we do not need to delete NA
 dispersal_analysis <- cbind(label, dispersal_analysis)
 
-########################################
-# Drop the taxa from the tree
+### Delete NA ####
+dispersal_analysis_partial <- dispersal_analysis %>% 
+  drop_na()
+setdiff(dispersal_tree$tip.label, dispersal_analysis_partial$label) # Data that it is in the tree but not in the data
+name.check(dispersal_tree, dispersal_analysis_partial) # All data that it is not matching
+matches <- match(dispersal_analysis_partial$label, dispersal_tree$tip.label, nomatch = 0)
+dispersal_analysis_partial <- subset(dispersal_analysis_partial, matches != 0)
+row.names(dispersal_analysis_partial) <- dispersal_analysis_partial$label
+name.check(dispersal_tree, dispersal_analysis_partial) # All data that it is not matching
 
-setdiff(dispersal_tree$tip.label, dispersal_analysis$label) # Data that it is in the tree but not in the data
-name.check(dispersal_tree, dispersal_analysis) # All data that it is not matching
-matches <- match(dispersal_analysis$label, dispersal_tree$tip.label, nomatch = 0)
-dispersal_analysis <- subset(dispersal_analysis, matches != 0)
-row.names(dispersal_analysis) <- dispersal_analysis$label
-name.check(dispersal_tree, dispersal_analysis) # All data that it is not matching
-
-ff <- name.check(dispersal_tree, dispersal_analysis)
+ff <- name.check(dispersal_tree, dispersal_analysis_partial)
 to_drop <- ff$tree_not_data
-dispersal_tree <-  drop.tip(dispersal_tree, to_drop)
-name.check(dispersal_tree, dispersal_analysis) # All data that it is not matching
-
+dispersal_tree_partial <-  drop.tip(dispersal_tree, to_drop)
+name.check(dispersal_tree_partial, dispersal_analysis_partial) # All data that it is not matching
 # ANALYSIS ================================================================
 
 
 dispersal_analysis <- left_join(dispersal_analysis,distance_total_functions_join, by= c("label") )
 
-
 dispersal_analysis <- dispersal_analysis %>% 
   drop_na()
+
+dispersal_analysis$Weibull_median <- as.integer(dispersal_analysis$Weibull_median)
+dispersal_analysis$Weibull_upper_distance <- as.integer(dispersal_analysis$Weibull_upper_distance)
+dispersal_analysis$Weibull_median_log <- as.integer(dispersal_analysis$Weibull_median_log)
+dispersal_analysis$Weibull_upper_distance_log <- as.integer(dispersal_analysis$Weibull_upper_distance_log)
+
 
 A <- ape::vcv.phylo(dispersal_tree)
 phylo <- dispersal_tree
@@ -195,11 +200,8 @@ table(dispersal_analysis$Order.x)
 table(dispersal_analysis$Family.x)
 
 
-# Best model average weibull median
 
-load("Exports/results/brms_models/partial_models/interactions/model_weibull_partial_interactions.Rdata")
-results_total
-best_weibull_average_median_model <- results_total$model[[1]]$formula
+
 ####### WITHIN-CLADE #######
 
 # PAsserines
@@ -230,8 +232,7 @@ passerines_prediction <- imap_dfr(folds, function(x, y){
   test <- passerines %>% slice(test_ids)
   
   m <- brm(
-    best_weibull_average_median_model,
-    #Weibull_median~ HWI + body_mass + habita_for + PC1 +  diet + distance_mig +  Latitude + (1|gr(label, cov = A)), 
+    Weibull_median_log ~ log_HWI + (1|gr(label, cov = A)), 
     data = train, family = gaussian(), 
     data2 = list(A = A),
     chains = 2, cores = 2, iter = 4000,
@@ -245,7 +246,7 @@ passerines_prediction <- imap_dfr(folds, function(x, y){
                          control = list(adapt_delta = 0.95))
   
   predictions <- as.data.frame(predictions)
-  v_res <- test$Weibull_median
+  v_res <- test$Weibull_median_log 
   model_test <- lm(v_res ~ predictions[, 1])
   ff <- model_performance(model_test)
   tibble(model = list(m), validation = ff, fold = y)
@@ -254,62 +255,11 @@ passerines_prediction <- imap_dfr(folds, function(x, y){
 
 passerines_prediction$order <- "Passeriformes"
 
-#### Accipitriformes ######
-Accipitriformes <- dispersal_analysis %>% 
-  filter(Order.x == "Accipitriformes")
-table(Accipitriformes$Family.x.x)
-
-
-kfold <- function(x, k) {
-  
-  sample(nrow(x)) %>% split(1:nrow(x) %% k)
-  
-}
-
-folds <-  kfold(Accipitriformes, 2)
-names(folds) <- paste0("fold_", 1:2)
-map_int(folds, length)
-
-
-Accipitriformes_prediction <- imap_dfr(folds, function(x, y){
-  
-  test_ids <- x
-  train_ids <- setdiff(1:nrow(Accipitriformes), test_ids)
-  
-  train <- Accipitriformes %>% slice(train_ids)
-  
-  test <- Accipitriformes %>% slice(test_ids)
-  
-  m <- brm(
-    best_weibull_average_median_model,
-    #Weibull_median~ HWI + body_mass + habita_for + PC1 +  diet + distance_mig +  Latitude + (1|gr(label, cov = A)), 
-    data = train, family = gaussian(), 
-    data2 = list(A = A),
-    chains = 2, cores = 2, iter = 4000,
-    control = list(adapt_delta = 0.95)
-  )
-  
-  predictions <- predict(m, newdata = test, type = "response",
-                         family = gaussian(), allow_new_levels= TRUE,
-                         #data2 = list(A = A),
-                         chains = 2, cores = 2, iter = 4000,
-                         control = list(adapt_delta = 0.95))
-  
-  predictions <- as.data.frame(predictions)
-  v_res <- test$Weibull_median
-  model_test <- lm(v_res ~ predictions[, 1])
-  ff <- model_performance(model_test)
-  tibble(model = list(m), validation = ff, fold = y)
-  
-})
-
-Accipitriformes_prediction$order <- "Accipitriformes"
-###
 
 #### Anseriformes ######
 Anseriformes <- dispersal_analysis %>% 
   filter(Order.x == "Anseriformes")
-table(Anseriformes$Family.x.x)
+table(Anseriformes$Family.x)
 
 
 kfold <- function(x, k) {
@@ -333,8 +283,7 @@ Anseriformes_prediction <- imap_dfr(folds, function(x, y){
   test <- Anseriformes %>% slice(test_ids)
   
   m <- brm(
-    best_weibull_average_median_model,
-    #Weibull_median~ HWI + body_mass + habita_for + PC1 +  diet + distance_mig +  Latitude + (1|gr(label, cov = A)),
+    Weibull_median_log ~ log_HWI + (1|gr(label, cov = A)), 
     data = train, family = gaussian(), 
     data2 = list(A = A),
     chains = 2, cores = 2, iter = 4000,
@@ -348,7 +297,7 @@ Anseriformes_prediction <- imap_dfr(folds, function(x, y){
                          control = list(adapt_delta = 0.95))
   
   predictions <- as.data.frame(predictions)
-  v_res <- test$Weibull_median
+  v_res <- test$Weibull_median_log 
   model_test <- lm(v_res ~ predictions[, 1])
   ff <- model_performance(model_test)
   tibble(model = list(m), validation = ff, fold = y)
@@ -382,8 +331,7 @@ Charadriiformes_prediction <- imap_dfr(folds, function(x, y){
   test <- Charadriiformes %>% slice(test_ids)
   
   m <- brm(
-    best_weibull_average_median_model,
-    #Weibull_median~ HWI + body_mass + habita_for + PC1 +  diet + distance_mig +  Latitude + (1|gr(label, cov = A)),
+    Weibull_median_log ~ log_HWI + (1|gr(label, cov = A)), 
     data = train, family = gaussian(), 
     data2 = list(A = A),
     chains = 2, cores = 2, iter = 4000,
@@ -397,7 +345,7 @@ Charadriiformes_prediction <- imap_dfr(folds, function(x, y){
                          control = list(adapt_delta = 0.95))
   
   predictions <- as.data.frame(predictions)
-  v_res <- test$Weibull_median
+  v_res <- test$Weibull_median_log 
   model_test <- lm(v_res ~ predictions[, 1])
   ff <- model_performance(model_test)
   tibble(model = list(m), validation = ff, fold = y)
@@ -405,7 +353,7 @@ Charadriiformes_prediction <- imap_dfr(folds, function(x, y){
 })
 Charadriiformes_prediction$order <- "Charadriiformes"
 
-within_clade_tibble <- bind_rows(passerines_prediction, Accipitriformes_prediction, Anseriformes_prediction, Charadriiformes_prediction)
+within_clade_tibble <- bind_rows(passerines_prediction, Anseriformes_prediction, Charadriiformes_prediction)
 within_clade_tibble$type <- "within"
 
 #### BETWEEN- CLADE #####
@@ -429,8 +377,7 @@ train <- nrow_list %>% pluck(1)
 test_y <- nrow_list %>% purrr::list_modify("Accipitriformes" = NULL)
 test <- do.call("rbind", test_y)
 m <- brm(
-  best_weibull_average_median_model,
-  #Weibull_median~ HWI + body_mass + habita_for + PC1 +  diet + distance_mig +  Latitude + (1|gr(label, cov = A)),
+  Weibull_median_log ~ log_HWI + (1|gr(label, cov = A)), 
   data = test, family = gaussian(), 
   data2 = list(A = A),
   chains = 2, cores = 2, iter = 4000,
@@ -444,7 +391,7 @@ predictions <- predict(m, newdata = train, type = "response",
                        control = list(adapt_delta = 0.95))
 
 predictions <- as.data.frame(predictions)
-v_res <- train$Weibull_median
+v_res <- train$Weibull_median 
 model_test <- lm(v_res ~ predictions[, 1])
 ff <- model_performance(model_test)
 sp_table_total <- tibble(model = list(m), validation = ff, order = "Accipitriformes")
@@ -454,8 +401,7 @@ train <- nrow_list %>% pluck(2)
 test_y <- nrow_list %>% purrr::list_modify("Anseriformes" = NULL)
 test <- do.call("rbind", test_y)
 m <- brm(
-  best_weibull_average_median_model,
-  #Weibull_median~ HWI + body_mass + habita_for + PC1 +  diet + distance_mig +  Latitude + (1|gr(label, cov = A)),
+  Weibull_median_log ~ log_HWI + (1|gr(label, cov = A)), 
   data = test, family = gaussian(), 
   data2 = list(A = A),
   chains = 2, cores = 2, iter = 4000,
@@ -469,7 +415,7 @@ predictions <- predict(m, newdata = train, type = "response",
                        control = list(adapt_delta = 0.95))
 
 predictions <- as.data.frame(predictions)
-v_res <- train$Weibull_median
+v_res <- train$Weibull_median 
 model_test <- lm(v_res ~ predictions[, 1])
 ff <- model_performance(model_test)
 sp_table <- tibble(model = list(m), validation = ff, order = "Anseriformes")
@@ -480,8 +426,7 @@ train <- nrow_list %>% pluck(3)
 test_y <- nrow_list %>% purrr::list_modify("Charadriiformes" = NULL)
 test <- do.call("rbind", test_y)
 m <- brm(
-  best_weibull_average_median_model,
-  #Weibull_median~ HWI + body_mass + habita_for + PC1 +  diet + distance_mig +  Latitude + (1|gr(label, cov = A)),
+  Weibull_median_log ~ log_HWI + (1|gr(label, cov = A)), 
   data = test, family = gaussian(), 
   data2 = list(A = A),
   chains = 2, cores = 2, iter = 4000,
@@ -495,7 +440,7 @@ predictions <- predict(m, newdata = train, type = "response",
                        control = list(adapt_delta = 0.95))
 
 predictions <- as.data.frame(predictions)
-v_res <- train$Weibull_median
+v_res <- train$Weibull_median 
 model_test <- lm(v_res ~ predictions[, 1])
 ff <- model_performance(model_test)
 sp_table <- tibble(model = list(m), validation = ff, order = "Charadriiformes")
@@ -506,8 +451,7 @@ train <- nrow_list %>% pluck(4)
 test_y <- nrow_list %>% purrr::list_modify("Passeriformes" = NULL)
 test <- do.call("rbind", test_y)
 m <- brm(
-  best_weibull_average_median_model,
-  #Weibull_median~ HWI + body_mass + habita_for + PC1 +  diet + distance_mig +  Latitude + (1|gr(label, cov = A)),
+  Weibull_median_log ~ log_HWI + (1|gr(label, cov = A)), 
   data = test, family = gaussian(), 
   data2 = list(A = A),
   chains = 2, cores = 2, iter = 4000,
@@ -521,47 +465,21 @@ predictions <- predict(m, newdata = train, type = "response",
                        control = list(adapt_delta = 0.95))
 
 predictions <- as.data.frame(predictions)
-v_res <- train$Weibull_median
+v_res <- train$Weibull_median 
 model_test <- lm(v_res ~ predictions[, 1])
 ff <- model_performance(model_test)
 sp_table <- tibble(model = list(m), validation = ff, order = "Passeriformes")
 sp_table_total <- bind_rows(sp_table_total, sp_table)
-#saveRDS(sp_table_total, "prediction_between_clade.rds")
 
 between_clade_tibble <- sp_table_total
 
 between_clade_tibble$type <- "betweeen"
 
-between_clade_tibble$fold <- "total"
+between_clade_tibble$fold <- "natal"
 
 
 prediction_total <- bind_rows(within_clade_tibble, between_clade_tibble)
 names(prediction_total)
-saveRDS(prediction_total, "prediction_between_within_clade_complex_Weibull.rds")
+prediction_total$complexity <- "only_HWI"
 
-
-prediction_total <- readRDS("Exports/results/prediction_between_within_clade_complex.rds")
-
-ggplot(prediction_total, aes(validation$R2, type)) +
-  geom_boxplot(aes(fill = type)) +
-  theme_minimal()
-
-ggplot(prediction_total, aes(validation$RMSE, type)) +
-  geom_boxplot(aes(fill = type)) +
-  theme_minimal()
-
-ggplot(prediction_total, aes(validation$BIC, type)) +
-  geom_boxplot(aes(fill = type)) +
-  theme_minimal()
-
-ggplot(prediction_total, aes(validation$Sigma, type)) +
-  geom_boxplot(aes(fill = type)) +
-  theme_minimal()
-
-
-model1 <- aov(validation$BIC~ type, data=prediction_total)
-summary(model1)
-
-
-
-
+saveRDS(prediction_total, "prediction_between_within_clade_HWI_weibull_natal.rds")

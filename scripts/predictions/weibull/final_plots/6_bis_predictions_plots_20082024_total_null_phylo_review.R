@@ -90,27 +90,29 @@ dispersal_analysis_partial_age <- read_csv2("data/data_process/dispersal_analysi
 ####################
 # Load table predictions files
 
-prediction_average <- read_csv("Exports/results/prediction_2/weibull/prediction_median_average.csv") %>% 
-  mutate(age="average")
-prediction_natal <- read_csv("Exports/results/prediction_2/weibull/prediction_median_natal.csv") %>% 
-  mutate(age="natal") %>% 
-  filter(!order== "Accipitriformes")
-prediction_breeding <- read_csv("Exports/results/prediction_2/weibull/prediction_median_breeding.csv") %>% 
-  mutate(age="breeding") %>% 
-  filter(!order== "Accipitriformes" )
+prediction_average <- read_csv("Exports/results/prediction_2/weibull/prediction_median_average_null_model_train.csv") %>% 
+  mutate(test="null model") %>% 
+  filter(complexity== "total") %>% 
+  mutate(complexity ="null model")
+  
+prediction_average_test <- read_csv("revision_analysis/results/predictions/weibull/median/average/prediction_average_sensivity_test_train.csv") %>% 
+  mutate(test="best model") 
 
-prediction_total <- rbind(prediction_average, prediction_natal, prediction_breeding)
-#write.csv2(prediction_total, "table_prediction_median.csv")
+
+
+prediction_total <- rbind(prediction_average, prediction_average_test)
+
 ###########################
+
 
 
 theme_set(theme_classic())
 my_pal <- rcartocolor::carto_pal(n = 8, name = "Bold")[c(1, 3, 7, 2)]
 
-sumrepdat <- summarySE(prediction_total, measurevar = "R2", groupvars=c("age","type", "complexity", "order"))
+sumrepdat <- summarySE(prediction_total, measurevar = "R2", groupvars=c("type", "complexity", "order"))
 
 summary_order <- prediction_total %>% 
-  group_by(age, type, complexity, order) %>% 
+  group_by(type, complexity, order) %>% 
   dplyr::summarize(Mean_R2 = mean(R2, na.rm=TRUE))
 
 
@@ -122,10 +124,10 @@ table_prediction$complexity <-
                 "only_HWI"= "HWI", "only_distance_mig"= "Distance migration", "only_diet"= "Diet", "only_habitat"= "Habitat",
                 "only_habitat_for"= "Habitat", "only_habita_for"= "Habitat", "total"= "Dispersal syndrome")
 
-  sumrepdat2 <- summarySE(table_prediction, measurevar = "Mean_R2", groupvars=c("age", "type", "complexity"))
-#write.csv2(sumrepdat2, "summary_table_prediction_median.csv")
+sumrepdat2 <- summarySE(table_prediction, measurevar = "Mean_R2", groupvars=c("type", "complexity"))
+#write.csv2(sumrepdat2, "summary_table_prediction_median_sensivity.csv")
 
-sumrepdat3 <- summarySE(table_prediction, measurevar = "Mean_R2", groupvars=c("age", "type"))
+sumrepdat3 <- summarySE(table_prediction, measurevar = "Mean_R2", groupvars=c( "type"))
 sumrepdat3 <- summarySE(table_prediction, measurevar = "Mean_R2", groupvars=c("order", "type"))
 
 
@@ -133,14 +135,14 @@ ggplot(sumrepdat2, aes(x = complexity, y = Mean_R2 , fill = type, group= type)) 
   geom_point( aes(color = type),
               ## draw horizontal lines instead of points
               shape = 16,
-              size = 2,
-              alpha = 1, 
+              size = 3,
+              #alpha = 1, 
               position=position_dodge(0.5)
   )  +
-  geom_errorbar(aes(ymin=Mean_R2-se, ymax=Mean_R2+se, color = type), width=.2, 
+  geom_errorbar(aes(ymin=Mean_R2-se, ymax=Mean_R2+se, color = type), width=1, 
                 position=position_dodge(0.5)
   )+
-  geom_point(data = table_prediction, aes(x = complexity, y = Mean_R2, group = type, colour = type, shape= order), size= 3, alpha=0.5,
+  geom_point(data = table_prediction, aes(x = complexity, y = Mean_R2, group = type, colour = type, shape= order), size= 2, alpha=0.4,
              position=position_dodge(0.5)) +
   #geom_point(summary_order, aes(x = complexity, y = R2, colour = type),position = position_jitter(width = .005), size = 1, shape = 20)+
   #geom_text_repel(data=table_prediction, aes(x = complexity, y = Mean_R2, label = order, group = type),
@@ -153,127 +155,40 @@ ggplot(sumrepdat2, aes(x = complexity, y = Mean_R2 , fill = type, group= type)) 
   scale_shape_manual(values=c(15, 17, 4, 8))+
   scale_x_discrete(guide = guide_axis(n.dodge=1)) +
   coord_cartesian(ylim = c(0, 1), clip = "on")  + theme(text = element_text(size = 20))  +
-  facet_wrap(vars(age), scales = "free")  +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-ggsave(filename = "Fig_3_median_predictions", width = 8, height = 5, device='tiff', dpi=800)
-
-###############################
-ggplot(sumrepdat2, aes(x = complexity, y = Mean_R2 , fill = type, group= type)) +
-  geom_point( aes(color = type),
-              ## draw horizontal lines instead of points
-              shape = 16,
-              size = 2,
-              alpha = 1, 
-              position=position_dodge(0.5)
-  )  +
-  geom_errorbar(aes(ymin=Mean_R2-se, ymax=Mean_R2+se, color = type), width=.2, 
-                position=position_dodge(0.5)
-                )+
-  #geom_point(aes(x = as.numeric(R2)-.15, y = complexity, colour = type),position = position_jitter(width = .005), size = 1, shape = 20)+
-  #geom_point(aes(colour = type),size = 1, shape = 20)+
-  #geom_boxplot(aes(x = R2_s, y = complexity, fill = type),outlier.shape = NA, alpha = .5, width = .5, colour = "black")+
-  scale_colour_brewer(palette = "Dark2")+
-  scale_fill_brewer(palette = "Dark2") +
-  scale_x_discrete(guide = guide_axis(n.dodge=1)) +
-  coord_cartesian(ylim = c(0, 1), clip = "on")  + theme(text = element_text(size = 20))  +
-  facet_wrap(vars(age), scales = "free")  +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 
 
-# Average
-
-ggplot(sumrepdat2 %>% filter(age== "average"), aes(x = complexity, y = Mean_R2 , fill = type, group= type)) +
-  geom_point( aes(color = type),
-              ## draw horizontal lines instead of points
-              shape = 16,
-              size = 2,
-              alpha = 1, 
-              position=position_dodge(0.5)
-  )  +
-  geom_errorbar(aes(ymin=Mean_R2-se, ymax=Mean_R2+se, color = type), width=.2, 
-                position=position_dodge(0.5)
-  )+
-  geom_point(data = table_prediction %>% filter(age== "average"), aes(x = complexity, y = Mean_R2, group = type, colour = type, shape= order), size= 3, alpha=0.5,
-             position=position_dodge(0.5)) +
-  #geom_point(summary_order, aes(x = complexity, y = R2, colour = type),position = position_jitter(width = .005), size = 1, shape = 20)+
-  #geom_text_repel(data=table_prediction, aes(x = complexity, y = Mean_R2, label = order, group = type),
-  #               min.segment.length = 0, seed = 42, box.padding = 0.5) +
-  #geom_point(aes(x = as.numeric(R2)-.15, y = complexity, colour = type),position = position_jitter(width = .005), size = 1, shape = 20)+
-  #geom_point(aes(colour = type),size = 1, shape = 20)+
-  #geom_boxplot(aes(x = R2_s, y = complexity, fill = type),outlier.shape = NA, alpha = .5, width = .5, colour = "black")+
-  scale_colour_brewer(palette = "Dark2")+
-  scale_fill_brewer(palette = "Dark2") +
-  scale_shape_manual(values=c(15, 17, 4, 8))+
-  scale_x_discrete(guide = guide_axis(n.dodge=1)) +
-  coord_cartesian(ylim = c(0, 1), clip = "on")  + theme(text = element_text(size = 20))  +
-  #facet_wrap(vars(age), scales = "free")  +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-ggsave(filename = "Fig_3_median_average_prediction.tiff", width = 8, height = 5, device='tiff', dpi=700)
 
 
-ggplot(sumrepdat2 %>% filter(age== "natal"), aes(x = complexity, y = Mean_R2 , fill = type, group= type)) +
-  geom_point( aes(color = type),
-              ## draw horizontal lines instead of points
-              shape = 16,
-              size = 2,
-              alpha = 1, 
-              position=position_dodge(0.5)
-  )  +
-  geom_errorbar(aes(ymin=Mean_R2-se, ymax=Mean_R2+se, color = type), width=.2, 
-                position=position_dodge(0.5)
-  )+
-  geom_point(data = table_prediction %>% filter(age== "natal"), aes(x = complexity, y = Mean_R2, group = type, colour = type, shape= order), size= 3, alpha=0.5,
-             position=position_dodge(0.5)) +
-  #geom_point(summary_order, aes(x = complexity, y = R2, colour = type),position = position_jitter(width = .005), size = 1, shape = 20)+
-  #geom_text_repel(data=table_prediction, aes(x = complexity, y = Mean_R2, label = order, group = type),
-  #               min.segment.length = 0, seed = 42, box.padding = 0.5) +
-  #geom_point(aes(x = as.numeric(R2)-.15, y = complexity, colour = type),position = position_jitter(width = .005), size = 1, shape = 20)+
-  #geom_point(aes(colour = type),size = 1, shape = 20)+
-  #geom_boxplot(aes(x = R2_s, y = complexity, fill = type),outlier.shape = NA, alpha = .5, width = .5, colour = "black")+
-  scale_colour_brewer(palette = "Dark2")+
-  scale_fill_brewer(palette = "Dark2") +
-  scale_shape_manual(values=c(17, 4, 8))+
-  scale_x_discrete(guide = guide_axis(n.dodge=1)) +
-  coord_cartesian(ylim = c(0, 1), clip = "on")  + theme(text = element_text(size = 20))  +
-  #facet_wrap(vars(age), scales = "free")  +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-ggsave(filename = "Fig_3_median_natal_prediction.tiff", width = 8, height = 5, device='tiff', dpi=700)
 
 
-ggplot(sumrepdat2 %>% filter(age== "breeding"), aes(x = complexity, y = Mean_R2 , fill = type, group= type)) +
-  geom_point( aes(color = type),
-              ## draw horizontal lines instead of points
-              shape = 16,
-              size = 2,
-              alpha = 1, 
-              position=position_dodge(0.5)
-  )  +
-  geom_errorbar(aes(ymin=Mean_R2-se, ymax=Mean_R2+se, color = type), width=.2, 
-                position=position_dodge(0.5)
-  )+
-  geom_point(data = table_prediction %>% filter(age== "breeding" ), aes(x = complexity, y = Mean_R2, group = type, colour = type, shape= order), size= 3, alpha=0.5,
-             position=position_dodge(0.5)) +
-  #geom_point(summary_order, aes(x = complexity, y = R2, colour = type),position = position_jitter(width = .005), size = 1, shape = 20)+
-  #geom_text_repel(data=table_prediction, aes(x = complexity, y = Mean_R2, label = order, group = type),
-  #               min.segment.length = 0, seed = 42, box.padding = 0.5) +
-  #geom_point(aes(x = as.numeric(R2)-.15, y = complexity, colour = type),position = position_jitter(width = .005), size = 1, shape = 20)+
-  #geom_point(aes(colour = type),size = 1, shape = 20)+
-  #geom_boxplot(aes(x = R2_s, y = complexity, fill = type),outlier.shape = NA, alpha = .5, width = .5, colour = "black")+
-  scale_colour_brewer(palette = "Dark2")+
-  scale_fill_brewer(palette = "Dark2") +
-  scale_shape_manual(values=c(17, 4, 8))+
-  scale_x_discrete(guide = guide_axis(n.dodge=1)) +
-  coord_cartesian(ylim = c(0, 1), clip = "on")  + theme(text = element_text(size = 20))  +
-  #facet_wrap(vars(age), scales = "free")  +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-ggsave(filename = "Fig_3_median_breeding_prediction.tiff", width = 8, height = 5, device='tiff', dpi=700)
 
 ##########################################
 
 
+theme_set(theme_classic())
+my_pal <- rcartocolor::carto_pal(n = 8, name = "Bold")[c(1, 3, 7, 2)]
 
-ggplot(sumrepdat2, aes(x = complexity, y = Mean_R2 , fill = type, group= type)) +
+sumrepdat <- summarySE(prediction_total, measurevar = "R2", groupvars=c("test","type", "complexity", "order"))
+
+summary_order <- prediction_total %>% 
+  group_by(test, type, complexity, order) %>% 
+  dplyr::summarize(Mean_R2 = mean(R2, na.rm=TRUE))
+
+
+table_prediction <- summary_order %>% 
+  mutate(complexity= as.factor(complexity)) 
+
+table_prediction$complexity <- 
+  recode_factor(table_prediction$complexity, "only_PC1"= "Life history", "only_latitude"= "Latitude", "only_body_mass"= "Body mass", "only_Latitude"= "Latitude",
+                "only_HWI"= "HWI", "only_distance_mig"= "Distance migration", "only_diet"= "Diet", "only_habitat"= "Habitat",
+                "only_habitat_for"= "Habitat", "only_habita_for"= "Habitat", "total"= "Dispersal syndrome")
+
+sumrepdat2 <- summarySE(table_prediction, measurevar = "Mean_R2", groupvars=c("test", "type", "complexity"))
+
+
+ggplot(sumrepdat2 %>% filter(complexity== "Dispersal syndrome"), aes(x = test, y = Mean_R2 , fill = type, group= type)) +
   geom_point( aes(color = type),
               ## draw horizontal lines instead of points
               shape = 16,
@@ -284,22 +199,136 @@ ggplot(sumrepdat2, aes(x = complexity, y = Mean_R2 , fill = type, group= type)) 
   geom_errorbar(aes(ymin=Mean_R2-se, ymax=Mean_R2+se, color = type), width=.2, 
                 position=position_dodge(0.5)
   )+
-  geom_point(data = table_prediction, aes(x = complexity, y = Mean_R2, group = type, colour = type, shape= order), size= 2, alpha=0.5,
+  geom_point(data = table_prediction %>% filter(complexity== "Dispersal syndrome"), aes(x = test, y = Mean_R2, group = type, colour = type, shape= order), size= 3, alpha=0.5,
              position=position_dodge(0.5)) +
-              #geom_point(summary_order, aes(x = complexity, y = R2, colour = type),position = position_jitter(width = .005), size = 1, shape = 20)+
+  #geom_point(summary_order, aes(x = complexity, y = R2, colour = type),position = position_jitter(width = .005), size = 1, shape = 20)+
   #geom_text_repel(data=table_prediction, aes(x = complexity, y = Mean_R2, label = order, group = type),
-   #               min.segment.length = 0, seed = 42, box.padding = 0.5) +
+  #               min.segment.length = 0, seed = 42, box.padding = 0.5) +
   #geom_point(aes(x = as.numeric(R2)-.15, y = complexity, colour = type),position = position_jitter(width = .005), size = 1, shape = 20)+
   #geom_point(aes(colour = type),size = 1, shape = 20)+
   #geom_boxplot(aes(x = R2_s, y = complexity, fill = type),outlier.shape = NA, alpha = .5, width = .5, colour = "black")+
   scale_colour_brewer(palette = "Dark2")+
   scale_fill_brewer(palette = "Dark2") +
+  scale_shape_manual(values=c(15, 17, 4, 8))+
   scale_x_discrete(guide = guide_axis(n.dodge=1)) +
   coord_cartesian(ylim = c(0, 1), clip = "on")  + theme(text = element_text(size = 20))  +
-  facet_wrap(vars(age), scales = "free")  +
+  #facet_wrap(vars(test), scales = "free")  +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 
 
+ggplot(sumrepdat2, aes(x = type, y = Mean_R2 , fill = test, group= test)) +
+  geom_point( aes(color = test),
+              ## draw horizontal lines instead of points
+              shape = 16,
+              size = 2,
+              alpha = 1, 
+              position=position_dodge(0.5)
+  )  +
+  geom_errorbar(aes(ymin=Mean_R2-se, ymax=Mean_R2+se, color = test), width=.2, 
+                position=position_dodge(0.5)
+  )+
+  geom_point(data = table_prediction, aes(x = type, y = Mean_R2, group = test, colour = test, shape= order), size= 3, alpha=0.5,
+             position=position_dodge(0.5)) +
+  #geom_point(summary_order, aes(x = complexity, y = R2, colour = type),position = position_jitter(width = .005), size = 1, shape = 20)+
+  #geom_text_repel(data=table_prediction, aes(x = complexity, y = Mean_R2, label = order, group = type),
+  #               min.segment.length = 0, seed = 42, box.padding = 0.5) +
+  #geom_point(aes(x = as.numeric(R2)-.15, y = complexity, colour = type),position = position_jitter(width = .005), size = 1, shape = 20)+
+  #geom_point(aes(colour = type),size = 1, shape = 20)+
+  #geom_boxplot(aes(x = R2_s, y = complexity, fill = type),outlier.shape = NA, alpha = .5, width = .5, colour = "black")+
+  scale_colour_brewer(palette = "Dark2")+
+  scale_fill_brewer(palette = "Dark2") +
+  scale_shape_manual(values=c(15, 17, 4, 8))+
+  scale_x_discrete(guide = guide_axis(n.dodge=1)) +
+  coord_cartesian(ylim = c(0, 1), clip = "on")  + theme(text = element_text(size = 20))  +
+  facet_wrap(vars(complexity), scales = "free")  +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
+
+
+##############
+# Now with the AIC
+
+###########################
+
+
+theme_set(theme_classic())
+my_pal <- rcartocolor::carto_pal(n = 8, name = "Bold")[c(1, 3, 7, 2)]
+
+sumrepdat <- summarySE(prediction_total, measurevar = "AICc", groupvars=c("phylo","type", "complexity", "order"))
+
+summary_order <- prediction_total %>% 
+  group_by(phylo, type, complexity, order) %>% 
+  dplyr::summarize(Mean_R2 = mean(AICc, na.rm=TRUE))
+
+
+table_prediction <- summary_order %>% 
+  mutate(complexity= as.factor(complexity)) 
+
+table_prediction$complexity <- 
+  recode_factor(table_prediction$complexity, "only_PC1"= "Life history", "only_latitude"= "Latitude", "only_body_mass"= "Body mass", "only_Latitude"= "Latitude",
+                "only_HWI"= "HWI", "only_distance_mig"= "Distance migration", "only_diet"= "Diet", "only_habitat"= "Habitat",
+                "only_habitat_for"= "Habitat", "only_habita_for"= "Habitat", "total"= "Dispersal syndrome")
+
+sumrepdat2 <- summarySE(table_prediction, measurevar = "Mean_R2", groupvars=c("phylo", "type", "complexity"))
+
+
+ggplot(sumrepdat2, aes(x = complexity, y = Mean_R2 , fill = phylo, group= phylo)) +
+  geom_point( aes(color = phylo),
+              ## draw horizontal lines instead of points
+              shape = 16,
+              size = 2,
+              alpha = 1, 
+              position=position_dodge(0.5)
+  )  +
+  geom_errorbar(aes(ymin=Mean_R2-se, ymax=Mean_R2+se, color = phylo), width=.2, 
+                position=position_dodge(0.5)
+  )+
+  geom_point(data = table_prediction, aes(x = complexity, y = Mean_R2, group = phylo, colour = phylo, shape= order), size= 3, alpha=0.5,
+             position=position_dodge(0.5)) +
+  #geom_point(summary_order, aes(x = complexity, y = R2, colour = type),position = position_jitter(width = .005), size = 1, shape = 20)+
+  #geom_text_repel(data=table_prediction, aes(x = complexity, y = Mean_R2, label = order, group = type),
+  #               min.segment.length = 0, seed = 42, box.padding = 0.5) +
+  #geom_point(aes(x = as.numeric(R2)-.15, y = complexity, colour = type),position = position_jitter(width = .005), size = 1, shape = 20)+
+  #geom_point(aes(colour = type),size = 1, shape = 20)+
+  #geom_boxplot(aes(x = R2_s, y = complexity, fill = type),outlier.shape = NA, alpha = .5, width = .5, colour = "black")+
+  scale_colour_brewer(palette = "Dark2")+
+  scale_fill_brewer(palette = "Dark2") +
+  scale_shape_manual(values=c(15, 17, 4, 8))+
+  scale_x_discrete(guide = guide_axis(n.dodge=1)) +
+  coord_cartesian(ylim = c(0, 120), clip = "on")  + theme(text = element_text(size = 20))  +
+  facet_wrap(vars(type), scales = "free")  +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  ylab("AICc")
+ggsave(filename = "Fig_3_median_predictions_wo_phylo", width = 8, height = 5, device='tiff', dpi=800)
+
+###############################
+
+
+ggplot(sumrepdat2, aes(x = type, y = Mean_R2 , fill = phylo, group= phylo)) +
+  geom_point( aes(color = phylo),
+              ## draw horizontal lines instead of points
+              shape = 16,
+              size = 2,
+              alpha = 1, 
+              position=position_dodge(0.5)
+  )  +
+  geom_errorbar(aes(ymin=Mean_R2-se, ymax=Mean_R2+se, color = phylo), width=.2, 
+                position=position_dodge(0.5)
+  )+
+  geom_point(data = table_prediction, aes(x = type, y = Mean_R2, group = phylo, colour = phylo, shape= order), size= 3, alpha=0.5,
+             position=position_dodge(0.5)) +
+  #geom_point(summary_order, aes(x = complexity, y = R2, colour = type),position = position_jitter(width = .005), size = 1, shape = 20)+
+  #geom_text_repel(data=table_prediction, aes(x = complexity, y = Mean_R2, label = order, group = type),
+  #               min.segment.length = 0, seed = 42, box.padding = 0.5) +
+  #geom_point(aes(x = as.numeric(R2)-.15, y = complexity, colour = type),position = position_jitter(width = .005), size = 1, shape = 20)+
+  #geom_point(aes(colour = type),size = 1, shape = 20)+
+  #geom_boxplot(aes(x = R2_s, y = complexity, fill = type),outlier.shape = NA, alpha = .5, width = .5, colour = "black")+
+  scale_colour_brewer(palette = "Dark2")+
+  scale_fill_brewer(palette = "Dark2") +
+  scale_shape_manual(values=c(15, 17, 4, 8))+
+  scale_x_discrete(guide = guide_axis(n.dodge=1)) +
+  coord_cartesian(ylim = c(0, 1), clip = "on")  + theme(text = element_text(size = 20))  +
+  facet_wrap(vars(complexity), scales = "free")  +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
 

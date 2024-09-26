@@ -66,32 +66,24 @@ names(dispersal_traits_total)
 distance_total_functions <- read_csv("data/dispersal_distance/Table_S13_ species_dispersal_distances.csv") 
 
 # Load the results of the brms models partial
-lista.modelos <- list.files(path="./Exports/results/brms_models/partial_models/interactions",pattern='*.RData$', full.names=TRUE)
-lapply(lista.modelos,load,.GlobalEnv)
+lista.modelos.natal <- list.files(path="./revision_analysis/results/weibull/natal",pattern='*.RData$', full.names=TRUE)
+lapply(lista.modelos.natal,load,.GlobalEnv)
+lista.modelos.breeding <- list.files(path="./revision_analysis/results/weibull/breeding",pattern='*.RData$', full.names=TRUE)
+lapply(lista.modelos.breeding,load,.GlobalEnv)
+lista.modelos.average <- list.files(path="./revision_analysis/results/weibull/average",pattern='*.RData$', full.names=TRUE)
+lapply(lista.modelos.average,load,.GlobalEnv)
 
 ## Manipulation -----------------------------------------------------------
 
-results_average_weibull$function_t <- "weibull"
 
-results_breeding_weibull$function_t <- "weibull"
-
-results_natal_weibull$function_t <- "weibull"
 
 ##########
-results_average_bestmodel$model[[2]]
+
 results_total <- bind_rows(results_average_weibull, results_breeding_weibull, results_natal_weibull)
-results_total
 
-vector_long <- rep(c("median", "long"), nrow(results_total)/2)
-results_total$dispersal_mode <- vector_long 
-save(results_total, file = "Exports/results/model_weibull_partial_interactions.RData")
+save(results_total, file = "./revision_analysis/results/weibull/best_model_weibull_review.RData")
 
+results_total_complete <- bind_rows(results_complete_average_models, results_complete_breeding_models, results_complete_natal_models)
 
-#### 
-plot_model(results_total$model[[1]]) + theme_classic()
-
-plot_model(results_total$model[[1]], type = "pred", terms = c("body_mass", "PC1"))
-plot_model(results_total$model[[1]], type = "pred", terms = c("body_mass", "diet"))
-plot_model(results_total$model[[1]], type = "pred", terms = c("body_mass", "habita_for"))
-
+save(results_total_complete, file = "./revision_analysis/results/weibull/complete_model_weibull_review.RData")
 
