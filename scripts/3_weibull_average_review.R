@@ -30,7 +30,7 @@ install.load.package <- function(x) {
 package_vec <- c(
   "readr","dplyr", "caret","tidyr", "tidyverse","mgcv", "MuMIn", "purrr", "reshape2", "lattice", "car", "ape", "geiger", "phytools", "nlme", "raster", "ggplot2", "sjPlot", "MCMCglmm", "plotMCMC", "tidybayes" , "plotMCMC", "loo", "brms",
   "mice", "projpred","geiger", "caper", "phylolm", "knitr", "ggmice", "picante", "broom", "performance", 
-  "DHARMa", "DHARMa.helpers", "kableExtra"# names of the packages required placed here as character objects
+  "DHARMa", "DHARMa.helpers"# names of the packages required placed here as character objects
 )
 
 sapply(package_vec, install.load.package)
@@ -68,12 +68,12 @@ distance_total_functions <- read_csv("data/dispersal_distance/Table_S13_ species
 # Select total dispersal, excluding breeding and natal
 
 dispersal_traits <- dispersal_traits_total %>% 
-  filter(type== "natal") %>% 
+  filter(type== "average") %>% 
   dplyr::rename(label= species) %>% 
   distinct(label, .keep_all = TRUE) 
 
 distance_total_functions_join <- distance_total_functions %>%
-  filter(type== "natal") %>% 
+  filter(type== "average") %>% 
   dplyr::select(species, median,upper_distance, function_id) %>% 
   myspread(function_id, c(median,upper_distance)) %>% 
   dplyr::rename(label= species)
@@ -190,18 +190,14 @@ names(dispersal_analysis_partial)
 st_full <- c("HWI", "body_mass", "habita_for", "PC1", "diet", "distance_mig", "Latitude", "body_mass:habita_for", "body_mass:PC1", "body_mass:diet")
 #st1 <- paste(st, collapse = " + ")
 #st2 <- paste0(paste(st, collapse = " + "), " + (1|gr(label, cov = A))")
-st_full_log <- c("log_HWI", "log_body_mass", "habita_for", "PC1", "diet", "distance_mig", "Latitude", "log_body_mass:habita_for", "log_body_mass:PC1", "log_body_mass:diet",  "distance_mig:Latitude")
-st <- c("HWI", "body_mass", "habita_for", "PC1", "diet", "distance_mig", "Latitude")
+st_full_log1 <- c("log_HWI", "log_body_mass", "habita_for", "PC1", "diet", "distance_mig", "Latitude", "log_body_mass:habita_for", "log_body_mass:PC1", "log_body_mass:diet", "distance_mig:Latitude")
+st <- c("log_HWI", "body_mass", "habita_for", "PC1", "diet", "distance_mig", "Latitude")
+st_full_log <- c("log_HWI", "body_mass", "habita_for", "PC1", "diet", "distance_mig", "Latitude", "body_mass:habita_for", "body_mass:PC1", "body_mass:diet", "distance_mig:Latitude")
 
 
 data <- dispersal_analysis_partial
 A <- ape::vcv.phylo(dispersal_tree_partial)
 phylo <- dispersal_tree_partial
-
-data$Weibull_median <- as.integer(data$Weibull_median)
-data$Weibull_upper_distance <- as.integer(data$Weibull_upper_distance)
-data$Weibull_median_log <- as.integer(data$Weibull_median_log)
-data$Weibull_upper_distance_log <- as.integer(data$Weibull_upper_distance_log)
 
 
 #### MEDIAN DISPERSAL ######
@@ -213,23 +209,27 @@ model_dispersal_gauss_log_complete <- brm(
   chains = 2, cores = 2, iter = 4000,
   control = list(adapt_delta = 0.95)
 )
-
 model_dispersal_gauss_log_complete <- add_criterion(model_dispersal_gauss_log_complete, "loo", moment_match = TRUE)
 simres <- dh_check_brms(model_dispersal_gauss_log_complete, integer = TRUE)
-dev.copy(png,'revision_analysis/results/weibull/natal/median_gauss_complete_dharma.png')
-plot(simres)
-dev.off()
 
 
 #### Model selection median dispersal ######
 
+# Refit the reference model K times:
+cv_fits <- run_cvfun(
+  model_dispersal_gauss_log_complete,
+  ### Only for the sake of speed (not recommended in general):
+  K = 10
+  ###
+)
 # For running projpred's CV in parallel (see cv_varsel()'s argument `parallel`):
 ncores <- parallel::detectCores(logical = FALSE)
 doParallel::registerDoParallel(ncores)
 # Final cv_varsel() run:
 cvvs <- cv_varsel(
   model_dispersal_gauss_log_complete,
-  cv_method = "loo",
+  cv_method = "kfold",
+  cvfits = cv_fits,
   ### Only for the sake of speed (not recommended in general):
   method = "forward",
   nclusters_pred = 20,
@@ -244,9 +244,7 @@ cvvs <- cv_varsel(
 doParallel::stopImplicitCluster()
 foreach::registerDoSEQ()
 plot(cvvs, stats = "mlpd", deltas = TRUE)
-dev.copy(png,'revision_analysis/results/weibull/natal/median_variable_selection.png')
-plot(cvvs)
-dev.off()
+
 size_decided <- suggest_size(cvvs, stat = "mlpd")
 
 smmry <- summary(cvvs, stats = "mlpd", type = c("mean", "lower", "upper"),
@@ -257,6 +255,7 @@ rk <- ranking(cvvs)
 rk[["fulldata"]]
 plot(pr_rk)
 ( predictors_final <- head(rk[["fulldata"]], size_decided) )
+
 plot(cv_proportions(rk, cumulate = TRUE))
 
 # Model selection without cv
@@ -279,75 +278,82 @@ model_dispersal_gauss_log_short <- brm(
 )
 
 model_dispersal_gauss_log_short <- add_criterion(model_dispersal_gauss_log_short, "loo", moment_match = TRUE)
+model_dispersal_gauss_log_short <- add_criterion(model_dispersal_gauss_log_short, "waic", moment_match = TRUE)
+
 simres <- dh_check_brms(model_dispersal_gauss_log_short, integer = TRUE)
-dev.copy(png,'revision_analysis/results/weibull/natal/median_gauss_short_dharma.png')
-plot(simres)
-dev.off()
 
-model_dispersal_gauss_log_short2 <- brm(
-  paste0("Weibull_median_log~", paste(soltrms_final, collapse = " + ")),
-  data = data, family = gaussian(), 
+model_dispersal_weibull_short <- brm(
+  paste0("Weibull_median~", paste0(paste(predictors_final, collapse = " + "), " + (1|gr(label, cov = A))")),
+  data = data, family = weibull(), 
   data2 = list(A = A),
   chains = 2, cores = 2, iter = 4000,
-  control = list(adapt_delta = 0.95)
+  control = list(adapt_delta = 0.95),
+  save_pars = save_pars(all = TRUE)
 )
 
-model_dispersal_gauss_log_short2 <- add_criterion(model_dispersal_gauss_log_short2, "loo", moment_match = TRUE)
-simres <- dh_check_brms(model_dispersal_gauss_log_short2, integer = TRUE)
-dev.copy(png,'revision_analysis/results/weibull/natal/median_gauss_short_dharma.png')
-plot(simres)
-dev.off()
+model_dispersal_weibull_short <- add_criterion(model_dispersal_weibull_short, "loo", moment_match = TRUE)
+model_dispersal_weibull_short <- add_criterion(model_dispersal_weibull_short, "waic", moment_match = TRUE)
 
-model_dispersal_HWI <- brm(
-  paste0("Weibull_median_log~",paste0(paste("HWI", collapse = " + "))),
-  data = data, family = gaussian(), 
+simres <- dh_check_brms(model_dispersal_weibull_short, integer = TRUE)
+
+
+model_dispersal_weibull_short2 <- brm(
+  paste0("Weibull_median~", paste0(paste(soltrms_final, collapse = " + "), " + (1|gr(label, cov = A))")),
+  data = data, family = weibull(), 
   data2 = list(A = A),
   chains = 2, cores = 2, iter = 4000,
-  control = list(adapt_delta = 0.95)
+  control = list(adapt_delta = 0.95),
+  save_pars = save_pars(all = TRUE)
 )
 
-model_dispersal_HWI <- add_criterion(model_dispersal_HWI, "loo", moment_match = TRUE)
-simres <- dh_check_brms(model_dispersal_HWI, integer = TRUE)
-dev.copy(png,'revision_analysis/results/weibull/natal/median_HWI_dharma.png')
-plot(simres)
-dev.off()
+model_dispersal_weibull_short2 <- add_criterion(model_dispersal_weibull_short2, "loo", moment_match = TRUE)
+model_dispersal_weibull_short2 <- add_criterion(model_dispersal_weibull_short2, "waic", moment_match = TRUE)
+
+simres <- dh_check_brms(model_dispersal_weibull_short2, integer = TRUE)
+
 
 null_median_model <- brm(
-  paste0("Weibull_median_log~", paste0(paste("1", collapse = " + "))),
-  data = data, family = gaussian(), 
+  paste0("Weibull_median~", paste0(paste("1", collapse = " + "), " + (1|gr(label, cov = A))")),
+  data = data, family = weibull(), 
   data2 = list(A = A),
   chains = 2, cores = 2, iter = 4000,
-  control = list(adapt_delta = 0.95)
+  control = list(adapt_delta = 0.95),
+  save_pars = save_pars(all = TRUE)
 )
 null_median_model <- add_criterion(null_median_model, "loo", moment_match = TRUE)
+null_median_model <- add_criterion(null_median_model, "waic", moment_match = TRUE)
 
 
-loo_compare(model_dispersal_gauss_log_short,model_dispersal_gauss_log_short2,  model_dispersal_gauss_log_complete,  criterion = "loo")
+model_dispersal_weibull_complete <- brm(
+  paste0("Weibull_median~", paste0(paste(st_full_log, collapse = " + "), " + (1|gr(label, cov = A))")),
+  data = data, family = weibull(), 
+  prior=c(prior(normal(0,2),class="Intercept"),
+          prior(normal(0,2),class="b"),
+          prior(gamma(0.01,0.01),class="shape")),
+  data2 = list(A = A),
+  chains = 2, cores = 2, iter = 4000,
+  control = list(adapt_delta = 0.95),
+  save_pars = save_pars(all = TRUE)
+)
 
-pp <-loo_compare(model_dispersal_gauss_log_short, model_dispersal_gauss_log_short2, model_dispersal_gauss_log_complete, model_dispersal_HWI,null_median_model ,  criterion = "loo")
+model_dispersal_weibull_complete <- add_criterion(model_dispersal_weibull_complete, "loo", moment_match = TRUE)
+simres <- dh_check_brms(model_dispersal_weibull_complete, integer = TRUE)
+
+
+pp <-loo_compare( model_dispersal_weibull_complete ,model_dispersal_weibull_short, model_dispersal_weibull_short2, null_median_model, criterion = "loo")
+#pp2 <-loo_compare( model_dispersal_weibull_complete ,model_dispersal_weibull_short, model_dispersal_weibull_short2, null_median_model, criterion = "waic")
 
 library(kableExtra)
 kbl(pp) %>%
   kable_paper(bootstrap_options = "striped", full_width = F)  %>%
-  kable_styling("striped")  %>%
-  save_kable("revision_analysis/results/weibull/natal/natal_comparison_median.pdf")
-write.csv2(pp, "revision_analysis/results/weibull/natal/natal_comparison_median.csv", row.names= T)
-
-model_dispersal_gauss_log_final <- brm(
-  paste0("Weibull_median_log~", paste0(paste(soltrms_final, collapse = " + "), " + (1|gr(label, cov = A))")),
-  data = data, family = gaussian(), 
-  data2 = list(A = A),
-  chains = 2, cores = 2, iter = 4000,
-  control = list(adapt_delta = 0.95)
-)
-
-simres <- dh_check_brms(model_dispersal_gauss_log_final, integer = TRUE)
-dev.copy(png,'revision_analysis/results/weibull/natal/median_phylo_dharma.png')
-plot(simres)
-dev.off()
+  kable_styling("striped") 
+  #save_kable("revision_analysis/results/weibull/average/average_comparison_median.pdf")
+write.csv2(pp, "results/weibull/average/average_comparison_median.csv", row.names= T)
 
 #### The best one is the complete model for the median
-best_median_model <- model_dispersal_gauss_log_final
+
+best_median_model <- model_dispersal_weibull_short
+
 
 ##### LONG DISTANCE DISPERSAL #######
 
@@ -362,20 +368,24 @@ model_long_dispersal_gauss_log_complete <- brm(
 model_long_dispersal_gauss_log_complete <- add_criterion(model_long_dispersal_gauss_log_complete, "loo", moment_match = TRUE)
 
 simres <- dh_check_brms(model_long_dispersal_gauss_log_complete, integer = TRUE)
-dev.copy(png,'revision_analysis/results/weibull/natal/long_gauss_complete_dharma.png')
-plot(simres)
-dev.off()
 
 #### Model selection median dispersal ######
 
-
+# Refit the reference model K times:
+cv_fits_long <- run_cvfun(
+  model_long_dispersal_gauss_log_complete,
+  ### Only for the sake of speed (not recommended in general):
+  K = 10
+  ###
+)
 # For running projpred's CV in parallel (see cv_varsel()'s argument `parallel`):
 ncores <- parallel::detectCores(logical = FALSE)
 doParallel::registerDoParallel(ncores)
 # Final cv_varsel() run:
 cvvs_long <- cv_varsel(
   model_long_dispersal_gauss_log_complete,
-  cv_method = "loo",
+  cv_method = "kfold",
+  cvfits = cv_fits_long,
   ### Only for the sake of speed (not recommended in general):
   method = "forward",
   nclusters_pred = 20,
@@ -390,14 +400,11 @@ cvvs_long <- cv_varsel(
 doParallel::stopImplicitCluster()
 foreach::registerDoSEQ()
 plot(cvvs_long, stats = "mlpd", deltas = TRUE)
-dev.copy(png,'revision_analysis/results/weibull/natal/variable_selection_long.png')
-plot(cvvs_long)
-dev.off()
 
 size_decided_long <- suggest_size(cvvs_long, stat = "mlpd")
 
 smmry_long <- summary(cvvs_long, stats = "mlpd", type = c("mean", "lower", "upper"),
-                      deltas = TRUE)
+                 deltas = TRUE)
 print(smmry_long, digits = 1)
 rk_long <- ranking(cvvs_long)
 ( pr_rk_long <- cv_proportions(rk_long) )
@@ -419,91 +426,85 @@ variable_sel_table_long <- kable(vs1_long$predictor_ranking)
 ## Run with predictors selected
 
 model_long_dispersal_gauss_log_short <- brm(
-  paste0("Weibull_upper_distance_log~", paste(predictors_final_long, collapse = " + ")),
+  paste0("Weibull_upper_distance_log~", paste0(paste(predictors_final_long, collapse = " + "), " + (1|gr(label, cov = A))")),
   data = data, family = gaussian(), 
   data2 = list(A = A),
   chains = 2, cores = 2, iter = 4000,
-  control = list(adapt_delta = 0.95)
+  control = list(adapt_delta = 0.95),
+  save_pars = save_pars(all = TRUE)
 )
 
 model_long_dispersal_gauss_log_short <- add_criterion(model_long_dispersal_gauss_log_short, "loo", moment_match = TRUE)
 simres <- dh_check_brms(model_long_dispersal_gauss_log_short, integer = TRUE)
-dev.copy(png,'revision_analysis/results/weibull/natal/long_gauss_short_dharma.png')
-plot(simres)
-dev.off()
 
 model_long_dispersal_gauss_log_short2 <- brm(
-  paste0("Weibull_upper_distance_log~", paste(soltrms_final_long, collapse = " + ")),
+  paste0("Weibull_upper_distance_log~", paste0(paste(soltrms_final_long, collapse = " + "), " + (1|gr(label, cov = A))")),
   data = data, family = gaussian(), 
   data2 = list(A = A),
   chains = 2, cores = 2, iter = 4000,
-  control = list(adapt_delta = 0.95)
+  control = list(adapt_delta = 0.95),
+  save_pars = save_pars(all = TRUE)
 )
 
 model_long_dispersal_gauss_log_short2 <- add_criterion(model_long_dispersal_gauss_log_short2, "loo", moment_match = TRUE)
 simres <- dh_check_brms(model_long_dispersal_gauss_log_short2, integer = TRUE)
-dev.copy(png,'revision_analysis/results/weibull/breeding/long_gauss_short_dharma.png')
-plot(simres)
-dev.off()
-
-model_long_dispersal_HWI <- brm(
-  paste0("Weibull_upper_distance_log~",paste0(paste("HWI", collapse = " + "))),
-  data = data, family = gaussian(), 
-  data2 = list(A = A),
-  chains = 2, cores = 2, iter = 4000,
-  control = list(adapt_delta = 0.95)
-)
-
-model_long_dispersal_HWI <- add_criterion(model_long_dispersal_HWI, "loo", moment_match = TRUE)
-simres <- dh_check_brms(model_long_dispersal_HWI, integer = TRUE)
-dev.copy(png,'revision_analysis/results/weibull/natal/long_HWI_dharma.png')
-plot(simres)
-dev.off()
 
 null_long_model <- brm(
-  paste0("Weibull_upper_distance_log~", paste0(paste("1", collapse = " + "))),
+  paste0("Weibull_upper_distance_log~", paste0(paste("1", collapse = " + "), " + (1|gr(label, cov = A))")),
+  #paste0("Weibull_upper_distance_log~", paste(st_full_log, collapse = " + ")),
   data = data, family = gaussian(), 
   data2 = list(A = A),
   chains = 2, cores = 2, iter = 4000,
-  control = list(adapt_delta = 0.95)
+  control = list(adapt_delta = 0.95),
+  save_pars = save_pars(all = TRUE)
 )
 null_long_model <- add_criterion(null_long_model, "loo", moment_match = TRUE)
 
-compare_long <- loo_compare(model_long_dispersal_gauss_log_short, model_long_dispersal_gauss_log_short2, model_long_dispersal_gauss_log_complete, null_long_model, model_long_dispersal_HWI,  criterion = "loo")
+null_long_model <- brm(
+  #paste0("Weibull_upper_distance_log~", paste0(paste("1", collapse = " + "), " + (1|gr(label, cov = A))")),
+  paste0("Weibull_upper_distance_log~", paste("1", collapse = " + ")),
+  data = data, family = gaussian(), 
+  data2 = list(A = A),
+  chains = 2, cores = 2, iter = 4000,
+  control = list(adapt_delta = 0.95),
+  save_pars = save_pars(all = TRUE)
+)
+null_long_model <- add_criterion(null_long_model, "loo", moment_match = TRUE)
+
+
+model_long_dispersal_gauss_log_complete <- brm(
+  paste0("Weibull_upper_distance_log~", paste0(paste(st_full_log, collapse = " + "), " + (1|gr(label, cov = A))")),
+  data = data, family = gaussian(), 
+  data2 = list(A = A),
+  chains = 2, cores = 2, iter = 4000,
+  control = list(adapt_delta = 0.95),
+  save_pars = save_pars(all = TRUE)
+)
+
+model_long_dispersal_gauss_log_complete <- add_criterion(model_long_dispersal_gauss_log_complete, "loo", moment_match = TRUE)
+
+simres <- dh_check_brms(model_long_dispersal_gauss_log_complete, integer = TRUE)
+
+
+compare_long <- loo_compare(model_long_dispersal_gauss_log_short, model_long_dispersal_gauss_log_short2, model_long_dispersal_gauss_log_complete, null_long_model,  criterion = "loo")
 
 
 library(kableExtra)
 kbl(compare_long) %>%
   kable_paper(bootstrap_options = "striped", full_width = F)  %>%
-  kable_styling("striped")  %>%
-  save_kable("revision_analysis/results/weibull/natal/natal_comparison_long.pdf")
-write.csv2(compare_long, "revision_analysis/results/weibull/natal/natal_comparison_long.csv", row.names= T)
-
-model_long_dispersal_gauss_log_final <- brm(
-  paste0("Weibull_upper_distance_log~", paste0(paste(soltrms_final_long, collapse = " + "), " + (1|gr(label, cov = A))")),
-  data = data, family = gaussian(), 
-  data2 = list(A = A),
-  chains = 2, cores = 2, iter = 4000,
-  control = list(adapt_delta = 0.95)
-)
-
-simres <- dh_check_brms(model_long_dispersal_gauss_log_final, integer = TRUE)
-dev.copy(png,'revision_analysis/results/weibull/breeding/long_phylo_dharma.png')
-plot(simres)
-dev.off()
+  kable_styling("striped")  
+  #save_kable("results/weibull/average/average_comparison_long.pdf")
+write.csv2(compare_long, "results/weibull/average/average_comparison_long.csv", row.names= T)
 
 
 #### The best one is the short model for the long
-best_long_model <- model_long_dispersal_gauss_log_final
-
+best_long_model <- model_long_dispersal_gauss_log_short
 
 ## Save results
 
-results_natal_weibull <- tibble(model = list(best_median_model, best_long_model), variable_selection= list(cvvs, cvvs_long), variable_selection_old= list(vs1, vs1_long), age = "natal", function_t= "best_model", type= c("median", "long") )
-save(results_natal_weibull, file = "revision_analysis/results/weibull/natal/model_natal_weibull_interactions.RData")
+results_average_weibull <- tibble(model = list(best_median_model, best_long_model), variable_selection= list(cvvs, cvvs_long), variable_selection_old= list(vs1, vs1_long) ,age = "average", function_t= "best_model", type= c("median", "long") )
+save(results_average_weibull, file = "results/weibull/average/model_average_weibull_interactions.RData")
 
-results_complete_natal_models <- tibble(model = list(model_dispersal_gauss_log_complete, model_long_dispersal_gauss_log_complete), age = "natal", function_t= "complete_model", type= c("median", "long") )
-save(results_complete_natal_models, file = "revision_analysis/results/weibull/natal/model_natal_complete_weibull_interactions.RData")
+results_complete_average_models <- tibble(model = list(model_dispersal_weibull_complete, model_long_dispersal_gauss_log_complete), age = "average", function_t= "complete_model", type= c("median", "long") )
+save(results_complete_average_models, file = "results/weibull/average/model_average_complete_weibull_interactions.RData")
 
-results_HWI <- tibble(model = list(model_dispersal_HWI, model_long_dispersal_HWI), age = "natal", function_t= "HWI", type= c("median", "long") )
-save(results_complete_natal_models, file = "revision_analysis/results/weibull/natal/model_natal_HWI.RData")

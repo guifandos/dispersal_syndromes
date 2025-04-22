@@ -78,7 +78,7 @@ names(dispersal_traits_total)
 distance_total_functions <- read_csv("data/dispersal_distance/Table_S13_ species_dispersal_distances.csv") 
 
 # Load partial models
-load("./revision_analysis/results/weibull/best_model_weibull_review.RData")
+load("./results/models/best/best_model_weibull_partial_interactions.Rdata")
 
 partial_models <- results_total
 
@@ -139,17 +139,20 @@ median_total_sel$ranking_fulldata <- as.factor(median_total_sel$ranking_fulldata
 
 median_total_sel$variable <- 
   recode_factor(median_total_sel$ranking_fulldata, "PC1"= "Life history", "Latitude"= "Latitude", "log_body_mass"= "Body mass",
+                "body_mass"= "Body mass",
                 "diet"= "Diet", "habita_for"= "Habitat", "log_HWI"= "HWI", "distance_mig"= "Distance migration",
                 "log_body_mass:PC1"= "Body mass : Life history", "log_body_mass:diet"= "Body mass : Diet", "log_body_mass:habita_for"= "Body mass : Habitat",
-                "distance_mig:Latitude"= "Distance migration : Latitude")
-write.csv2(median_total_sel, "./revision_analysis/results/weibull/median_variable_selection.csv")
+                "body_mass:PC1"= "Body mass : Life history", "body_mass:diet"= "Body mass : Diet", "body_mass:habita_for"= "Body mass : Habitat",
+                "distance_mig:Latitude"= "Distance migration : Latitude",
+                "log_HWI:Latitude"= "HWI : Latitude")
+write.csv2(median_total_sel, "./results/weibull/median_variable_selection.csv")
 
 library(standardize)
 median_total_scale <- median_total_sel %>%
   mutate(mlpd_scale= mlpd) %>% 
   mutate_at(c("mlpd_scale"), ~(scale_by(. ~ age) %>% as.vector))
 
-write.csv2(median_total_scale, "./revision_analysis/results/weibull/median_variable_selection_scale.csv")
+write.csv2(median_total_scale, "./results/weibull/median_variable_selection_scale.csv")
 
 
 long_total_sel <- rbind(long_weib_average,
@@ -163,17 +166,20 @@ long_total_sel$ranking_fulldata <- as.factor(long_total_sel$ranking_fulldata)
 
 long_total_sel$variable <- 
   recode_factor(long_total_sel$ranking_fulldata, "PC1"= "Life history", "Latitude"= "Latitude", "log_body_mass"= "Body mass",
+                "body_mass"= "Body mass",
                 "diet"= "Diet", "habita_for"= "Habitat", "log_HWI"= "HWI", "distance_mig"= "Distance migration",
                 "log_body_mass:PC1"= "Body mass : Life history", "log_body_mass:diet"= "Body mass : Diet", "log_body_mass:habita_for"= "Body mass : Habitat",
-                "distance_mig:Latitude"= "Distance migration : Latitude")
+                "body_mass:PC1"= "Body mass : Life history", "body_mass:diet"= "Body mass : Diet", "body_mass:habita_for"= "Body mass : Habitat",
+                "distance_mig:Latitude"= "Distance migration : Latitude",
+                "log_HWI:Latitude"= "HWI : Latitude")
 
-write.csv2(long_total_sel, "./revision_analysis/results/weibull/long_variable_selection.csv")
+write.csv2(long_total_sel, "./results/weibull/long_variable_selection.csv")
 
 long_total_scale <- long_total_sel %>%
   mutate(mlpd_scale= mlpd) %>% 
   mutate_at(c("mlpd_scale"), ~(scale_by(. ~ age) %>% as.vector))
 
-write.csv2(long_total_scale, "./revision_analysis/results/weibull/long_variable_selection_scale.csv")
+write.csv2(long_total_scale, "./results/weibull/long_variable_selection_scale.csv")
 
 ## custom colors
 my_pal <- rcartocolor::carto_pal(n = 8, name = "Bold")[c(1, 3, 7, 2)]
@@ -193,7 +199,7 @@ median_weibull <- ggplot(median_total_sel, aes(y = variable, x = mlpd *-1, xmin 
   #scale_fill_manual(values = my_pal, guide = "none")
   facet_wrap(~age) +
   xlab("MLPD *-1") 
-ggsave("./revision_analysis/results/weibull/figures/median_variable_selection.png", plot = median_weibull, width = 8, height = 6)
+ggsave("./results/weibull/figures/median_variable_selection.png", plot = median_weibull, width = 8, height = 6)
 
 
 long_weibull <- ggplot(long_total_sel, aes(y = variable, x = mlpd *-1, xmin = (mlpd.lower*-1), xmax = (mlpd.upper*-1) )) +
@@ -211,25 +217,24 @@ long_weibull <- ggplot(long_total_sel, aes(y = variable, x = mlpd *-1, xmin = (m
   xlab("MLPD *-1") 
 
 
-ggsave("./revision_analysis/results/weibull/figures/long_variable_selection.png", plot = long_weibull, width = 8, height = 6)
+ggsave("./results/weibull/figures/long_variable_selection.png", plot = long_weibull, width = 8, height = 6)
 
 
 cv_proportion_median <- ggplot(median_total_sel, aes(y = variable, x = cv_proportions_diag)) +
-  geom_bar(aes(colour= age, fill=age),
-                     position = position_dodge(
-                       ## control randomness and range of jitter
-                       width = 0.5
-                     )
+  geom_point(aes(colour= age, fill=age),
+             position = position_dodge(
+               ## control randomness and range of jitter
+               width = 0.5
+             )
   ) +
   geom_vline(xintercept=0.5, lty=2, size =0.5, col="grey") +
   scale_fill_manual(values = my_pal) + 
   scale_color_manual(values = my_pal) +
   #scale_fill_manual(values = my_pal, guide = "none")
   facet_wrap(~age) +
-  xlab("CV Proportion") +
-  coord_flip() +
-  
-ggsave("./revision_analysis/results/weibull/figures/median_variable_selection_cv_proportion.png", plot = cv_proportion_median, width = 8, height = 6)
+  xlab("CV Proportion") 
+
+ggsave("./results/weibull/figures/median_variable_selection_cv_proportion.png", plot = cv_proportion_median, width = 8, height = 6)
 
 
 cv_proportion_long <- ggplot(long_total_sel, aes(y = variable, x = cv_proportions_diag)) +
@@ -245,7 +250,7 @@ cv_proportion_long <- ggplot(long_total_sel, aes(y = variable, x = cv_proportion
   #scale_fill_manual(values = my_pal, guide = "none")
   facet_wrap(~age) +
   xlab("CV Proportion") 
-ggsave("./revision_analysis/results/weibull/figures/long_variable_selection_cv_proportion.png", plot = cv_proportion_long, width = 8, height = 6)
+ggsave("./results/weibull/figures/long_variable_selection_cv_proportion.png", plot = cv_proportion_long, width = 8, height = 6)
 
 ##############
 variable_selection_both <- rbind(median_total_sel, long_total_sel)
@@ -268,7 +273,7 @@ variable_selection_plot <- ggplot(variable_selection_both %>% mutate(lower= 0), 
   xlab("CV Proportion %") +
   theme_tidybayes()
 
-  ggsave("./revision_analysis/results/weibull/figures/variable_selection_plot_both.png", plot = variable_selection_plot, width = 8, height = 6)
+  ggsave("./results/weibull/figures/variable_selection_plot_both.png", plot = variable_selection_plot, width = 8, height = 6)
   
 x11()
 variable_selection_plot
@@ -304,7 +309,7 @@ cv_proportion_natal <- ggplot(natal_dispersal_variable_selection %>% mutate(lowe
   scale_color_manual(values = my_pal) +
   xlab("CV Proportion %") +
   theme_tidybayes()
-ggsave("./revision_analysis/results/weibull/figures/median_natal_variable_selection_cv_proportion.png", plot = cv_proportion_natal, width = 8, height = 6)
+ggsave("./results/weibull/figures/median_natal_variable_selection_cv_proportion.png", plot = cv_proportion_natal, width = 8, height = 6)
 
 ########################
 library(here)
