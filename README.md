@@ -1,6 +1,6 @@
 # Dispersal syndromes in European bird dispersal
 
-## Complex trait syndromes allow understanding but not predicting dispersal distance in European birds.
+## Complex trait syndromes help understand but do not predict dispersal distances in European birds.
 
 Guillermo Fandos<sup>1,2</sup>,Rob Robinson <sup>3</sup>, Damaris Zurell <sup>1</sup>
 
