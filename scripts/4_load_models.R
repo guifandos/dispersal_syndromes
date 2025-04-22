@@ -66,19 +66,21 @@ names(dispersal_traits_total)
 distance_total_functions <- read_csv("data/dispersal_distance/Table_S13_ species_dispersal_distances.csv") 
 
 # Load the results of the brms models partial
-lista.modelos.natal <- list.files(path="./revision_analysis/results/weibull/natal",pattern='*.RData$', full.names=TRUE)
-lapply(lista.modelos.natal[[4]],load,.GlobalEnv)
-lista.modelos.breeding <- list.files(path="./revision_analysis/results/weibull/breeding",pattern='*.RData$', full.names=TRUE)
-lapply(lista.modelos.breeding[[3]],load,.GlobalEnv)
-lista.modelos.average <- list.files(path="./revision_analysis/results/weibull/average",pattern='*.RData$', full.names=TRUE)
-lapply(lista.modelos.average[[3]],load,.GlobalEnv)
+lista.modelos <- list.files(path="./results/models/best",pattern='*.RData$', full.names=TRUE)
+lapply(lista.modelos,load,.GlobalEnv)
 
 ## Manipulation -----------------------------------------------------------
 
+results_average_weibull$function_t <- "weibull"
 
+results_breeding_weibull$function_t <- "weibull"
+
+results_natal_weibull$function_t <- "weibull"
 
 ##########
-
 results_total <- bind_rows(results_average_weibull, results_breeding_weibull, results_natal_weibull)
+results_total
 
-save(results_total, file = "./revision_analysis/results/weibull/best_model_weibull_review.RData")
+vector_long <- rep(c("median", "long"), nrow(results_total)/2)
+results_total$dispersal_mode <- vector_long 
+save(results_total, file = "results/models/best_model_weibull_partial_interactions.RData")
