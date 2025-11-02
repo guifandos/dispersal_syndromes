@@ -1,6 +1,6 @@
 # Simple mechanistic traits outperform complex syndromes in predicting avian dispersal distances
 
-**Guillermo Fandos, Robert A. Robinson, Damaris Zurell**
+**Guillermo Fandos<sup>1,2</sup>,Rob Robinson <sup>3</sup>, Damaris Zurell <sup>1</sup>**
 
 [![DOI](https://img.shields.io/badge/DOI-pending-blue)]()
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -8,18 +8,19 @@
 **Corresponding author**: Guillermo Fandos  
 **Email**: gfandos@ucm.es
 
+1. Institute for Biochemistry and Biology, University of Potsdam, D-14469 Potsdam, Germany 
+2. Department of Biodiversity ecology and evolution, Faculty of Biology, Complutense University, 28040 Madrid, Spain
+3.  British Trust for Ornithology, The Nunnery, Thetford, IP24 2PU, United Kingdom
+
+
+Code (preliminar): [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.10713958.svg)](https://zenodo.org/records/10713958)
+
 ---
 
 ## Overview
 
 This repository contains all R code and analysis pipelines for the manuscript:
 
-**"Complex trait syndromes help understand but do not predict dispersal distances in European birds"**
-
-<sup>1</sup> University of Potsdam, Germany  
-<sup>2</sup> Complutense University of Madrid, Spain  
-<sup>3</sup> British Trust for Ornithology, UK  
-<sup>4</sup> European Union for Bird Ringing, UK
 
 ### Key findings
 
