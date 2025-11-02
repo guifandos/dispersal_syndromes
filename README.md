@@ -2,7 +2,7 @@
 
 **Guillermo Fandos<sup>1,2</sup>,Rob Robinson <sup>3</sup>, Damaris Zurell <sup>1</sup>**
 
-[![DOI](https://img.shields.io/badge/DOI-pending-blue)]()
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.10713958.svg)](https://zenodo.org/records/10713958)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 **Corresponding author**: Guillermo Fandos  
@@ -137,12 +137,14 @@ Complete datasets available at: [Zenodo DOI - pending]
 If you use this code, please cite:
 
 ```bibtex
-@article{fandos2025dispersal,
-  title={Complex trait syndromes help understand but do not predict dispersal distances in European birds},
+@article{fandos2024dispersal,
+  title={Dispersal syndromes allow understanding but not predicting dispersal ability across the tree of life},
   author={Fandos, Guillermo and Robinson, Robert A and Zurell, Damaris},
-  journal={[Journal]},
-  year={2025},
-  doi={[DOI]}
+  journal={bioRxiv},
+  pages={2024.04.01.587575},
+  year={2024},
+  publisher={Cold Spring Harbor Laboratory},
+  doi={10.1101/2024.04.01.587575}
 }
 ```
 
