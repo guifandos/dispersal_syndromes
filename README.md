@@ -182,9 +182,9 @@ This work was funded by the German Science Foundation DFG (grant no. ZU 361/1-1)
 
 **Guillermo Fandos**  
 - Email: gfandos@ucm.es
-- GitHub: [Update with your GitHub]
-- ORCID: [Update with your ORCID]
-
+- GitHub: [@guifandos](https://github.com/guifandos)
+- ORCID: [0000-0003-1579-9444](https://orcid.org/0000-0003-1579-9444)
+**Project**: [https://github.com/guifandos/dispersal-syndromes-birds](https://github.com/guifandos/dispersal-syndromes-birds)
 ---
 
 ## Acknowledgments
