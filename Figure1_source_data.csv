@@ -1,0 +1,9 @@
+dispersal_type,variable,estimate,CI_lower_95,CI_upper_95,model_type
+Average Long,HWI,0.335,0.055,0.613,HWI Model
+Average Median,Body mass,0.504,0.189,0.815,Reduced Model
+Average Median,Diet,0.061,-0.078,0.198,Reduced Model
+Average Median,Habitat,-0.056,-0.124,0.012,Reduced Model
+Average Median,Latitude,-0.193,-0.356,-0.036,Reduced Model
+Average Median,Life history,-0.383,-0.64,-0.134,Reduced Model
+Average long,Diet,-0.041,-0.061,-0.021,Stacking Average
+Average long,HWI,0.215,0.11,0.32,Stacking Average
