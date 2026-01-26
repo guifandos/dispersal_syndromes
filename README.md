@@ -59,11 +59,20 @@ Model outputs and combined results:
 - **`combined/`**: Merged models and variable selection summaries
 
 ### 4. `figures/`
-Generated plots:
-- Forest plots
-- Conditional effects
-- Prediction plots
-- Model comparisons
+Contains the code and source data needed to reproduce the main figures of the manuscript:
+
+**Code:**
+- **`Figure_code_clean.R`**: R script to generate all main figures
+
+**Source data:**
+- **`Figure1_source_data.csv`**: Data for Figure 1
+- **`Figure2_source_data.csv`**: Data for Figure 2
+- **`Figure3_source_data.csv`**: Data for Figure 3
+
+To reproduce the figures, run:
+```r
+source("figures/Figure_code_clean.R")
+```
 
 ### 5. `manuscript/`
 Manuscript and supplementary materials (PDFs)
