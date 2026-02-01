@@ -12,6 +12,8 @@
 library(tidyverse)
 library(ggplot2)
 library(ggdist)
+library(Rmisc)
+library(rcartocolor)
 
 # ==============================================================================
 # FIGURE 1: Forest Plot - Dispersal Syndromes Coefficients
@@ -134,63 +136,89 @@ ggsave("Figure2_trait_dispersal.png", figure2, width = 14, height = 5, dpi = 600
 # ==============================================================================
 
 # Load source data
-fig3_data <- read.csv("Figure3_source_data.csv")
+fig3_data <- read_csv("Figure3_source_data_b.csv")
 
-# Calculate summary statistics (mean and SD per model type and validation type)
-fig3_summary <- fig3_data %>%
-  group_by(model_type, validation_type) %>%
-  summarise(
-    mean_R2 = mean(R2, na.rm = TRUE),
-    sd_R2 = sd(R2, na.rm = TRUE),
-    n = n(),
-    .groups = "drop"
-  )
+# Fix typo in type column
+fig3_data$type <- gsub("betweeen", "between", fig3_data$type)
 
-# Order model types
-model_order <- c("life_history", "latitude", "body_mass", "HWI", 
-                 "migration_distance", "diet", "habitat", "dispersal_syndrome")
-fig3_summary$model_type <- factor(fig3_summary$model_type, levels = model_order)
+# Calculate mean R2 per order, type, and complexity
+summary_order <- fig3_data %>%
+  dplyr::group_by(type, complexity, order) %>%
+  dplyr::summarise(Mean_R2 = mean(R2, na.rm = TRUE), .groups = "drop")
 
-# Clean labels
-model_labels <- c(
-  "life_history" = "Life history",
-  "latitude" = "Latitude", 
-  "body_mass" = "Body mass",
-  "HWI" = "HWI",
-  "migration_distance" = "Migration distance",
-  "diet" = "Diet",
-  "habitat" = "Habitat",
-  "dispersal_syndrome" = "Dispersal syndrome"
+# Rename complexity levels for display
+table_prediction <- summary_order %>%
+  mutate(complexity = as.factor(complexity))
+
+table_prediction$complexity <- recode_factor(
+  table_prediction$complexity,
+  "only_PC1"          = "Life history",
+  "only_latitude"     = "Latitude",
+  "only_Latitude"     = "Latitude",
+  "only_body_mass"    = "Body mass",
+  "only_HWI"          = "HWI",
+  "only_distance_mig" = "Distance migration",
+  "only_diet"         = "Diet",
+  "only_habitat"      = "Habitat",
+  "only_habitat_for"  = "Habitat",
+  "only_habita_for"   = "Habitat",
+  "total"             = "Dispersal syndrome"
 )
 
-# Colors
-colors_validation <- c("within" = "#ff7f0e", "between" = "#1f77b4")
+# Calculate summary statistics (mean and SE across orders)
+sumrepdat2 <- summarySE(table_prediction,
+                        measurevar = "Mean_R2",
+                        groupvars = c("type", "complexity"))
 
-# Plot
-figure3 <- ggplot(fig3_summary, aes(x = model_type, y = mean_R2, 
-                                     fill = validation_type, color = validation_type)) +
-  geom_point(position = position_dodge(width = 0.7), size = 3) +
-  geom_errorbar(aes(ymin = mean_R2 - sd_R2, ymax = mean_R2 + sd_R2),
-                width = 0.3, position = position_dodge(width = 0.7)) +
-  scale_fill_manual(values = colors_validation, 
-                    labels = c("Between-order", "Within-order"),
-                    name = NULL) +
-  scale_color_manual(values = colors_validation,
-                     labels = c("Between-order", "Within-order"),
-                     name = NULL) +
-  scale_x_discrete(labels = model_labels) +
-  scale_y_continuous(limits = c(-0.1, 1), breaks = seq(0, 1, 0.25)) +
+# Define order of x-axis
+level_order <- c("Life history", "Latitude", "Body mass", "HWI",
+                 "Distance migration", "Diet", "Habitat", "Dispersal syndrome")
+
+sumrepdat2$complexity <- factor(sumrepdat2$complexity, levels = level_order)
+table_prediction$complexity <- factor(table_prediction$complexity, levels = level_order)
+
+# Create plot
+figure3 <- ggplot(sumrepdat2, aes(x = complexity, y = Mean_R2, fill = type, group = type)) +
+  # Mean points
+  geom_point(aes(color = type),
+             shape = 16,
+             size = 4,
+             position = position_dodge(0.5)) +
+  # Error bars (SE)
+  geom_errorbar(aes(ymin = Mean_R2 - se, ymax = Mean_R2 + se, color = type),
+                width = 0.2,
+                linewidth = 0.8,
+                position = position_dodge(0.5)) +
+  # Individual order points
+  geom_point(data = table_prediction,
+             aes(x = complexity, y = Mean_R2, group = type, colour = type, shape = order),
+             size = 3,
+             alpha = 0.5,
+             position = position_dodge(0.5)) +
+  # Scales
+  scale_colour_brewer(palette = "Dark2") +
+  scale_fill_brewer(palette = "Dark2") +
+  scale_shape_manual(values = c(15, 17, 4, 8)) +
+  # Axis
+  scale_y_continuous(limits = c(0, 1), breaks = seq(0, 1, 0.25)) +
   labs(x = NULL, y = expression(R^2)) +
+  # Theme
   theme_classic() +
   theme(
-    axis.text.x = element_text(size = 11, color = "black", angle = 45, hjust = 1),
-    axis.text.y = element_text(size = 12, color = "black"),
-    axis.title = element_text(size = 14, color = "black"),
-    legend.position = "bottom",
-    legend.text = element_text(size = 12)
+    text = element_text(size = 14),
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 12),
+    axis.text.y = element_text(size = 12),
+    legend.position = "right"
   )
 
+# Save as PNG
 ggsave("Figure3_predictive_accuracy.png", figure3, width = 10, height = 6, dpi = 600)
+
+# Save as PDF (vectorial - recommended for publication)
+ggsave("Figure3_predictive_accuracy.pdf", figure3, width = 8, height = 5, device = cairo_pdf)
+
+# Save as TIFF (alternative)
+ggsave("Figure3_predictive_accuracy.tiff", figure3, width = 8, height = 5, device = "tiff", dpi = 300)
 
 
 # ==============================================================================
@@ -204,4 +232,4 @@ cat("Figure 3: Predictive accuracy within and between orders\n")
 cat("\nSource data files required:\n")
 cat("  - Figure1_source_data.csv\n")
 cat("  - Figure2_source_data.csv\n")
-cat("  - Figure3_source_data.csv\n")
+cat("  - Figure3_source_data_b.csv\n")
