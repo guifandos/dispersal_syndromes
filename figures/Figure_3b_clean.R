@@ -23,8 +23,8 @@ theme_set(theme_classic())
 # 2. LOAD DATA
 # =============================================================================
 
-# Load predictions data (adjust path if needed)
-validation_long <- read_csv("figure_files_code/prediction_median_average.csv")
+# Load predictions data
+validation_long <- read_csv("Figure3_source_data_b.csv")
 
 # =============================================================================
 # 3. DATA PROCESSING
